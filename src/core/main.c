@@ -629,6 +629,12 @@ static void write_root_script(void) {
       "echo \"[*] root script start uid=$(id -u) euid=$(id -u)\" >\"$LOG\"\n"
       "chmod 644 \"$LOG\" 2>/dev/null\n"
       "echo \"[*] seccomp=$(grep Seccomp /proc/self/status 2>/dev/null | tr '\\n' ' ')\" >>\"$LOG\"\n"
+      /* user-selected manager (GHOSTLOCK_MANAGER) takes priority */
+      "if [ -n \"$GHOSTLOCK_MANAGER\" ]; then\n"
+      "  echo \"[*] forced manager=$GHOSTLOCK_MANAGER\" >>\"$LOG\"\n"
+      "  MGR_KS=$(find /data/app -path \"*/$GHOSTLOCK_MANAGER*/lib/arm64/libksud.so\" 2>/dev/null | head -1)\n"
+      "  if [ -n \"$MGR_KS\" ]; then KSUD=$MGR_KS; fi\n"
+      "fi\n"
       "if [ ! -x \"$KSUD\" ]; then\n"
       "  KSUD=$(find /data/app -path '*/me.weishu.kernelsu.pr*/lib/arm64/libksud.so' 2>/dev/null | head -1)\n"
       "fi\n"
@@ -748,7 +754,9 @@ static void write_root_script(void) {
       "  chmod 755 \"$KSUD\" 2>/dev/null\n"
       /* detect which manager is installed so ksud targets the right package */
       "  MGR=me.weishu.kernelsu\n"
-      "  if [ -d /data/data/me.diksu.kernelsu ]; then MGR=me.diksu.kernelsu;\n"
+      "  if [ -n \"$GHOSTLOCK_MANAGER\" ]; then MGR=$GHOSTLOCK_MANAGER;\n"
+      "  elif [ -d /data/data/me.diksu.kernelsu ]; then MGR=me.diksu.kernelsu;\n"
+      "  elif [ -d /data/data/me.weishu.kernelsu.pr ]; then MGR=me.weishu.kernelsu.pr;\n"
       "  elif [ -d /data/data/com.resukisu.resukisu ]; then MGR=com.resukisu.resukisu;\n"
       "  elif [ -d /data/data/com.kowx712.supermanager ]; then MGR=com.kowx712.supermanager;\n"
       "  fi\n"

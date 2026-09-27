@@ -15,6 +15,7 @@ data class KernelSnapshot(
     val safeModeEnabled: Boolean,
     val tcpRouteEnabled: Boolean,
     val compact: Boolean,
+    val managerPackage: String = "",
 )
 
 enum class LogTone { Default, Error, Success, Warning, Progress }

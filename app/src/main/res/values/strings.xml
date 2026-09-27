@@ -55,4 +55,10 @@
     <string name="tcp_route_label">Exploit route</string>
     <string name="tcp_route_summary_on">TCP zerocopy</string>
     <string name="tcp_route_summary_off">pselect</string>
+    <string name="manager_label">Root manager</string>
+    <string name="manager_summary_auto">Auto-detect</string>
+    <string name="manager_value_auto">Auto</string>
+    <string name="manager_dialog_title">Select root manager</string>
+    <string name="manager_toast_switched">Manager selection saved</string>
+    <string name="manager_open_failed">Cannot open the manager app</string>
 </resources>

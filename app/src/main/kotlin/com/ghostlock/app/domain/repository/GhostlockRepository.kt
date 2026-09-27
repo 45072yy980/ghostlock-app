@@ -15,6 +15,8 @@ interface GhostlockRepository {
 
     fun setTcpRouteEnabled(enabled: Boolean)
 
+    fun setManagerPackage(packageName: String)
+
     suspend fun exportCandidates(): List<OffsetCandidate>
 
     suspend fun importOffsets(json: String): OffsetImportResult
@@ -35,6 +37,12 @@ interface GhostlockRepository {
     suspend fun publishOffsets(candidate: OffsetCandidate): String
 
     suspend fun runExploit(pair: CpuPair, onLog: (String) -> Unit): Int
+
+    /**
+     * Resolve the package of the manager to open after a successful activation.
+     * Returns null when no manager with a launcher activity is found.
+     */
+    fun resolveActiveManagerPackage(): String?
 
     fun close()
 }

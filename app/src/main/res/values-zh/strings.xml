@@ -55,4 +55,10 @@
     <string name="tcp_route_label">利用路径</string>
     <string name="tcp_route_summary_on">TCP 零拷贝</string>
     <string name="tcp_route_summary_off">pselect</string>
+    <string name="manager_label">Root 管理器</string>
+    <string name="manager_summary_auto">自动识别</string>
+    <string name="manager_value_auto">自动</string>
+    <string name="manager_dialog_title">选择 Root 管理器</string>
+    <string name="manager_toast_switched">已保存管理器选择</string>
+    <string name="manager_open_failed">无法打开管理器应用</string>
 </resources>

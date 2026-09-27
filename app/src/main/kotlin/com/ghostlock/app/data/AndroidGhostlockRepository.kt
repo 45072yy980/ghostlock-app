@@ -48,11 +48,13 @@ class AndroidGhostlockRepository(context: Context) : GhostlockRepository {
     private var selectedCpuPair = 0
     private var safeModeEnabled = false
     private var tcpRouteEnabled = true
+    private var managerPackage = ""
     private var pendingParsedEntries: JSONArray? = null
 
     init {
         buildCpuPairs()
         restoreCpuPair()
+        restoreManagerPackage()
     }
 
     override suspend fun snapshot(): KernelSnapshot = KernelSnapshot(
@@ -66,6 +68,7 @@ class AndroidGhostlockRepository(context: Context) : GhostlockRepository {
         safeModeEnabled = safeModeEnabled,
         tcpRouteEnabled = tcpRouteEnabled,
         compact = isCompactKernel(),
+        managerPackage = managerPackage,
     )
 
     override fun selectCpuPair(index: Int) {
@@ -82,6 +85,18 @@ class AndroidGhostlockRepository(context: Context) : GhostlockRepository {
 
     override fun setTcpRouteEnabled(enabled: Boolean) {
         tcpRouteEnabled = enabled
+    }
+
+    override fun setManagerPackage(packageName: String) {
+        managerPackage = packageName
+        appContext.getSharedPreferences("ghostlock_prefs", Context.MODE_PRIVATE).edit {
+            putString("manager_package", packageName)
+        }.apply()
+    }
+
+    private fun restoreManagerPackage() {
+        managerPackage = appContext.getSharedPreferences("ghostlock_prefs", Context.MODE_PRIVATE)
+            .getString("manager_package", "").orEmpty()
     }
 
     override suspend fun exportCandidates(): List<OffsetCandidate> {
@@ -266,6 +281,7 @@ class AndroidGhostlockRepository(context: Context) : GhostlockRepository {
                     }
                     if (safeModeEnabled) environment()["GHOSTLOCK_DISABLE_MODULES"] = "1"
                     if (!tcpRouteEnabled) environment()["GHOSTLOCK_TCP_ROUTE"] = "0"
+                    if (managerPackage.isNotEmpty()) environment()["GHOSTLOCK_MANAGER"] = managerPackage
                 }
             try {
                 runProcess(command, onLog = {}, captureOutput = false)
@@ -307,6 +323,19 @@ class AndroidGhostlockRepository(context: Context) : GhostlockRepository {
             output.write("[${candidate.json}]".toByteArray(StandardCharsets.UTF_8))
         } ?: throw IOException("cannot open download entry")
         return uri.toString()
+    }
+
+    override fun resolveActiveManagerPackage(): String? {
+        val pm = appContext.packageManager
+        val candidates = buildList {
+            if (managerPackage.isNotEmpty()) add(managerPackage)
+            addAll(listOf("me.diksu.kernelsu", "me.diksu.kernelsu.pr", "me.weishu.kernelsu", "me.weishu.kernelsu.pr", "com.resukisu.resukisu", "com.kowx712.supermanager"))
+        }.distinct()
+        for (pkg in candidates) {
+            val intent = pm.getLaunchIntentForPackage(pkg) ?: continue
+            if (pm.resolveActivity(intent, 0) != null) return pkg
+        }
+        return null
     }
 
     override fun close() {
@@ -473,7 +502,9 @@ class AndroidGhostlockRepository(context: Context) : GhostlockRepository {
     private fun firstValidProperty(vararg keys: String): String? = keys.asSequence().firstNotNullOfOrNull { validDeviceName(systemProperty(it)) }
 
     private fun prepareKsud(workDir: File, onLog: (String) -> Unit): File? {
-        val packages = listOf("me.weishu.kernelsu.pr", "me.weishu.kernelsu", "me.diksu.kernelsu", "me.diksu.kernelsu.pr", "com.resukisu.resukisu", "com.kowx712.supermanager")
+        val defaultPackages = listOf("me.weishu.kernelsu.pr", "me.weishu.kernelsu", "me.diksu.kernelsu", "me.diksu.kernelsu.pr", "com.resukisu.resukisu", "com.kowx712.supermanager")
+        // A user-selected manager takes priority; fall back to the full list for auto mode.
+        val packages = if (managerPackage.isNotEmpty()) listOf(managerPackage) + defaultPackages else defaultPackages
         var installed = false
         for (packageName in packages) {
             val appInfo = runCatching { appContext.packageManager.getApplicationInfo(packageName, 0) }.getOrNull() ?: continue

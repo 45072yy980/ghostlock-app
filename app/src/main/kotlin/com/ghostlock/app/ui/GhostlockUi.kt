@@ -61,6 +61,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ghostlock.app.BuildConfig
 import com.ghostlock.app.R
+import com.ghostlock.app.domain.model.RootManager
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
@@ -103,6 +104,7 @@ data class GhostlockUiState(
     val safeModeEnabled: Boolean = false,
     val tcpRouteEnabled: Boolean = true,
     val compact: Boolean = false,
+    val managerPackage: String = "",
     val executionSheetVisible: Boolean = false,
     val executionSheetDismissible: Boolean = false,
     val dialogVisible: Boolean = false,
@@ -135,6 +137,7 @@ interface GhostlockActions {
     fun onCpuPairSelected(index: Int)
     fun onSafeModeChanged(enabled: Boolean)
     fun onTcpRouteChanged(enabled: Boolean)
+    fun onManagerSelected(packageName: String)
     fun onDialogItemSelected(index: Int)
     fun onDialogInputChange(value: String)
     fun onDialogConfirm(value: String)
@@ -556,6 +559,22 @@ private fun ControlPanel(
                     onSelectedIndexChange = actions::onCpuPairSelected
                 )
             }
+        }
+        Card(modifier = modifier.padding(top = 12.dp)) {
+            OverlaySpinnerPreference(
+                title = stringResource(R.string.manager_label),
+                items = RootManager.selectable.map {
+                    DropdownItem(icon = null, title = it.displayName)
+                },
+                selectedIndex = RootManager.selectable
+                    .indexOfFirst { it.packageName == state.managerPackage }
+                    .coerceAtLeast(0),
+                showValue = true,
+                onSelectedIndexChange = { index ->
+                    val manager = RootManager.selectable.getOrNull(index)
+                    if (manager != null) actions.onManagerSelected(manager.packageName)
+                }
+            )
         }
         Card(modifier = modifier.padding(top = 12.dp)) {
             SwitchPreference(

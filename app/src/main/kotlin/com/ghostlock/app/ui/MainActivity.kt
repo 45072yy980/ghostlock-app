@@ -64,7 +64,20 @@ class MainActivity : ComponentActivity() {
             } else {
                 window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             }
+
+            is GhostlockEffect.OpenManager -> openManager(effect.packageName)
         }
+    }
+
+    private fun openManager(packageName: String) {
+        val launch = packageManager.getLaunchIntentForPackage(packageName)
+        if (launch == null) {
+            Toast.makeText(this, getString(R.string.manager_open_failed), Toast.LENGTH_SHORT).show()
+            return
+        }
+        launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        runCatching { startActivity(launch) }
+            .onFailure { Toast.makeText(this, getString(R.string.manager_open_failed), Toast.LENGTH_SHORT).show() }
     }
 
     private fun shareOffsets(uri: Uri) {
@@ -119,6 +132,7 @@ private fun GhostlockRoute(
             override fun onCpuPairSelected(index: Int) = viewModel.selectCpuPair(index)
             override fun onSafeModeChanged(enabled: Boolean) = viewModel.toggleSafeMode(enabled)
             override fun onTcpRouteChanged(enabled: Boolean) = viewModel.toggleTcpRoute(enabled)
+            override fun onManagerSelected(packageName: String) = viewModel.selectManagerByPackage(packageName)
             override fun onDialogItemSelected(index: Int) = viewModel.onDialogItemSelected(index)
             override fun onDialogInputChange(value: String) = viewModel.onDialogInputChange(value)
             override fun onDialogConfirm(value: String) = viewModel.onDialogConfirm(value)

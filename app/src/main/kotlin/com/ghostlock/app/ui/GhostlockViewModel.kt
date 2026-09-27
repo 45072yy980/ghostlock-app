@@ -34,6 +34,7 @@ sealed interface GhostlockEffect {
     data class Toast(val resourceId: Int) : GhostlockEffect
     data class Clipboard(val text: String) : GhostlockEffect
     data class KeepScreenAwake(val enabled: Boolean) : GhostlockEffect
+    data class OpenManager(val packageName: String) : GhostlockEffect
 }
 
 enum class DocumentRequest { ImportOffsets, BootImage, XblImage }
@@ -90,6 +91,13 @@ class GhostlockViewModel(
         mutableState.update { it.copy(tcpRouteEnabled = enabled) }
     }
 
+    fun selectManagerByPackage(packageName: String) {
+        repository.setManagerPackage(packageName)
+        kernelSnapshot = kernelSnapshot?.copy(managerPackage = packageName)
+        mutableState.update { it.copy(managerPackage = packageName) }
+        send(GhostlockEffect.Toast(R.string.manager_toast_switched))
+    }
+
     fun onRun() {
         val snapshot = kernelSnapshot ?: return
         if (!snapshot.kernelSupported) {
@@ -109,6 +117,16 @@ class GhostlockViewModel(
                 val code = runExploitUseCase(pair, ::appendLog)
                 appendLog(if (code == 0) "result: exploit completed" else "result: exploit failed (exit code=$code)")
                 appendLog("exit code=$code")
+                if (code == 0) {
+                    // Open the manager main screen after a successful activation.
+                    val managerPkg = repository.resolveActiveManagerPackage()
+                    if (managerPkg != null) {
+                        appendLog("manager: opening $managerPkg")
+                        send(GhostlockEffect.OpenManager(managerPkg))
+                    } else {
+                        appendLog("manager: no launcher activity found")
+                    }
+                }
             } finally {
                 endOperation()
                 send(GhostlockEffect.KeepScreenAwake(false))
@@ -239,6 +257,7 @@ class GhostlockViewModel(
                 tcpRouteEnabled = snapshot.tcpRouteEnabled,
                 compact = snapshot.compact,
                 exportVisible = canExport,
+                managerPackage = snapshot.managerPackage,
             )
         }
     }
