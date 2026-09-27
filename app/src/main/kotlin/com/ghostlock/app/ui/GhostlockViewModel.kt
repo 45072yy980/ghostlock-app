@@ -298,7 +298,7 @@ class GhostlockViewModel(
         when (dialogType) {
             DialogType.INPUT -> when (kind) {
                 DialogKind.CustomManager -> confirmCustomManager(value)
-                DialogKind.Default -> parseUrl(value)
+                DialogKind.Default, DialogKind.TransferRoot -> parseUrl(value)
             }
             DialogType.NONE, DialogType.LIST -> Unit
         }
