@@ -100,6 +100,8 @@ class GhostlockViewModel(
         kernelSnapshot = kernelSnapshot?.copy(managerPackage = packageName)
         mutableState.update { it.copy(managerPackage = packageName) }
         send(GhostlockEffect.Toast(R.string.manager_toast_switched))
+        // Re-read install / root state so the selector reflects reality.
+        viewModelScope.launch { refreshSnapshot() }
     }
 
     /** Opens an input dialog to type a custom manager package name. */
@@ -108,8 +110,9 @@ class GhostlockViewModel(
             it.copy(
                 dialogVisible = true,
                 dialogType = DialogType.INPUT,
+                dialogTitleRes = R.string.manager_custom_title,
                 dialogMessageRes = R.string.manager_custom_hint,
-                dialogInput = state.value.managerPackage.takeIf { RootManager.isCustomPackage(it) }.orEmpty(),
+                dialogInput = state.value.managerPackage.takeIf { pkg -> RootManager.isCustomPackage(pkg) }.orEmpty(),
             )
         }
         dialogKind = DialogKind.CustomManager
@@ -289,6 +292,8 @@ class GhostlockViewModel(
                 compact = snapshot.compact,
                 exportVisible = canExport,
                 managerPackage = snapshot.managerPackage,
+                installedManagers = snapshot.installedManagers,
+                deviceRooted = snapshot.deviceRooted,
             )
         }
     }

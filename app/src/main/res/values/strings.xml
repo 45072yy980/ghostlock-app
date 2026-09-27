@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">GhostLock</string>
+    <string name="app_name">GhostLock Fork</string>
     <string name="action_run">Run</string>
     <string name="action_running">Running…</string>
     <string name="action_advanced">Advanced</string>
@@ -59,5 +59,6 @@
     <string name="manager_toast_switched">Manager selection saved</string>
     <string name="manager_open_failed">Cannot open the manager app</string>
     <string name="manager_custom_hint">Manager package name (e.g. me.diksu.kernelsu)</string>
+    <string name="manager_custom_title">Custom manager package</string>
     <string name="manager_custom_invalid">Enter a valid package name</string>
 </resources>

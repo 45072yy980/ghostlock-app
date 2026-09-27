@@ -17,6 +17,12 @@ interface GhostlockRepository {
 
     fun setManagerPackage(packageName: String)
 
+    /** Package names of root managers currently installed on the device. */
+    fun installedManagers(): List<String>
+
+    /** Whether the device already has a working root (module loaded / su reachable). */
+    fun isDeviceRooted(): Boolean
+
     suspend fun exportCandidates(): List<OffsetCandidate>
 
     suspend fun importOffsets(json: String): OffsetImportResult

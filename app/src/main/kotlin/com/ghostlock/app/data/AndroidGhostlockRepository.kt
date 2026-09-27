@@ -69,6 +69,8 @@ class AndroidGhostlockRepository(context: Context) : GhostlockRepository {
         tcpRouteEnabled = tcpRouteEnabled,
         compact = isCompactKernel(),
         managerPackage = managerPackage,
+        installedManagers = installedManagers(),
+        deviceRooted = isDeviceRooted(),
     )
 
     override fun selectCpuPair(index: Int) {
@@ -323,6 +325,33 @@ class AndroidGhostlockRepository(context: Context) : GhostlockRepository {
             output.write("[${candidate.json}]".toByteArray(StandardCharsets.UTF_8))
         } ?: throw IOException("cannot open download entry")
         return uri.toString()
+    }
+
+    override fun installedManagers(): List<String> {
+        val pm = appContext.packageManager
+        val known = listOf(
+            "me.weishu.kernelsu", "me.weishu.kernelsu.pr",
+            "me.diksu.kernelsu", "me.diksu.kernelsu.pr",
+            "com.resukisu.resukisu", "com.kowx712.supermanager",
+        )
+        return known.filter { pkg ->
+            runCatching { pm.getApplicationInfo(pkg, 0) }.getOrNull() != null
+        }
+    }
+
+    override fun isDeviceRooted(): Boolean {
+        // 1) KernelSU-family module loaded (works without shelling out).
+        if (runCatching {
+                File("/proc/modules").useLines { lines ->
+                    lines.any { it.startsWith("kernelsu") }
+                }
+            }.getOrDefault(false)
+        ) return true
+        // 2) A manager app is installed and reachable.
+        if (installedManagers().isNotEmpty()) return true
+        // 3) `su` binary present.
+        return listOf("/system/bin/su", "/system/xbin/su", "/sbin/su", "/su/bin/su")
+            .any { File(it).exists() }
     }
 
     override fun resolveActiveManagerPackage(): String? {

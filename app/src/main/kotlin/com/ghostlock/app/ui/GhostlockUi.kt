@@ -105,6 +105,8 @@ data class GhostlockUiState(
     val tcpRouteEnabled: Boolean = true,
     val compact: Boolean = false,
     val managerPackage: String = "",
+    val installedManagers: List<String> = emptyList(),
+    val deviceRooted: Boolean = false,
     val executionSheetVisible: Boolean = false,
     val executionSheetDismissible: Boolean = false,
     val dialogVisible: Boolean = false,
@@ -291,6 +293,21 @@ private fun GhostlockAboutDialog(
                         ),
                     ),
                     modifier = Modifier.clickable {
+                        uriHandler.openUri("https://github.com/45072yy980/ghostlock-app")
+                    },
+                )
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(text = stringResource(R.string.view_source) + " ")
+                Text(
+                    text = AnnotatedString(
+                        text = "Upstream",
+                        spanStyle = SpanStyle(
+                            textDecoration = TextDecoration.Underline,
+                            color = MiuixTheme.colorScheme.primary,
+                        ),
+                    ),
+                    modifier = Modifier.clickable {
                         uriHandler.openUri("https://github.com/YuKongA/ghostlock-app")
                     },
                 )
@@ -367,7 +384,8 @@ private fun GhostlockDialog(
 ) {
     OverlayDialog(
         show = state.dialogVisible,
-        title = if (state.dialogType == DialogType.NONE) null else stringResource(state.dialogTitleRes),
+        title = if (state.dialogType == DialogType.NONE || state.dialogTitleRes == 0) null
+        else stringResource(state.dialogTitleRes),
         onDismissRequest = actions::onDialogDismiss,
         onDismissFinished = actions::onDialogDismissFinished,
         content = {
@@ -398,7 +416,7 @@ private fun GhostlockDialog(
                     TextField(
                         value = state.dialogInput,
                         onValueChange = actions::onDialogInputChange,
-                        label = stringResource(state.dialogMessageRes),
+                        label = if (state.dialogMessageRes == 0) "" else stringResource(state.dialogMessageRes),
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                     )
@@ -564,8 +582,8 @@ private fun ControlPanel(
         Card(modifier = modifier.padding(top = 12.dp)) {
             OverlaySpinnerPreference(
                 title = stringResource(R.string.manager_label),
-                items = RootManager.selectable.map {
-                    DropdownItem(icon = null, title = it.displayName)
+                items = RootManager.selectable.map { manager ->
+                    DropdownItem(icon = null, title = managerLabel(manager, state.installedManagers))
                 },
                 selectedIndex = managerSelectedIndex(state.managerPackage),
                 showValue = true,
@@ -830,4 +848,14 @@ private fun managerSelectedIndex(packageName: String): Int {
         return RootManager.selectable.indexOf(RootManager.Custom)
     }
     return RootManager.selectable.indexOf(RootManager.Auto).coerceAtLeast(0)
+}
+
+/** Dropdown label for a manager, annotated with its install state. */
+private fun managerLabel(manager: RootManager, installed: List<String>): String = when (manager) {
+    RootManager.Auto -> "${manager.displayName} · auto"
+    RootManager.Custom -> manager.displayName
+    else -> {
+        val mark = if (manager.packageName in installed) " ✓" else ""
+        manager.displayName + mark
+    }
 }

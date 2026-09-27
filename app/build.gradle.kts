@@ -7,8 +7,8 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
-val appName = "GhostLock"
-val appVersionName = "1.1"
+val appName = "GhostLock-Fork"
+val appVersionName = "1.1.6"
 
 val gitVersionCode = runCatching {
     providers.exec {
@@ -90,7 +90,7 @@ android {
         }
     }
     defaultConfig {
-        applicationId = "com.ghostlock.app"
+        applicationId = "com.ghostlock.app.fork"
         minSdk = 34
         targetSdk = 37
         versionCode = gitVersionCode
