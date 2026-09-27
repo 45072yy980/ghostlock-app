@@ -67,4 +67,6 @@
     <string name="action_transfer_root">Transfer root to another manager</string>
     <string name="root_transfer_need_root">Root must be active before transferring</string>
     <string name="root_transfer_pick">Transfer root to</string>
+    <string name="root_transfer_ok">Root handed over</string>
+    <string name="root_transfer_failed">Transfer failed — target manager not installed or not trusted by this kernel</string>
 </resources>

@@ -67,4 +67,6 @@
     <string name="action_transfer_root">移交 root 给其他管理器</string>
     <string name="root_transfer_need_root">需先激活 root 才能移交</string>
     <string name="root_transfer_pick">移交 root 给</string>
+    <string name="root_transfer_ok">Root 已移交</string>
+    <string name="root_transfer_failed">移交失败——目标管理器未安装，或不被当前内核认可</string>
 </resources>

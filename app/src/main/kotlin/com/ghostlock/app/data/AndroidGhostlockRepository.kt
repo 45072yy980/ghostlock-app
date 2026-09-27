@@ -242,7 +242,7 @@ class AndroidGhostlockRepository(context: Context) : GhostlockRepository {
         }
     }
 
-    override suspend fun runExploit(pair: CpuPair, targetManager: String?, onLog: (String) -> Unit): Int {
+    override suspend fun runExploit(pair: CpuPair, targetManager: String?, transfer: Boolean, onLog: (String) -> Unit): Int {
         val workDir = filesDir
         return try {
             val binary = File(appContext.applicationInfo.nativeLibraryDir, "libghostlock.so")
@@ -285,6 +285,7 @@ class AndroidGhostlockRepository(context: Context) : GhostlockRepository {
                     if (safeModeEnabled) environment()["GHOSTLOCK_DISABLE_MODULES"] = "1"
                     if (!tcpRouteEnabled) environment()["GHOSTLOCK_TCP_ROUTE"] = "0"
                     if (effectiveManager.isNotEmpty()) environment()["GHOSTLOCK_MANAGER"] = effectiveManager
+                    if (transfer) environment()["GHOSTLOCK_TRANSFER"] = "1"
                 }
             try {
                 runProcess(command, onLog = {}, captureOutput = false)

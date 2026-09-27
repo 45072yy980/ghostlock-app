@@ -67,7 +67,7 @@ class GhostlockViewModel(
     private var pendingConfirmation: PendingConfirmation? = null
     private var dialogKind: DialogKind = DialogKind.Default
 
-    private enum class DialogKind { Default, CustomManager, TransferRoot }
+    private enum class DialogKind { Default, CustomManager, TransferRoot, TransferCustom }
 
     fun initialize() {
         if (initialized) return
@@ -139,14 +139,14 @@ class GhostlockViewModel(
         startExploit(snapshot, targetManager = null)
     }
 
-    /** Root hand-off: re-run the activation targeting a specific manager package. */
+    /** Root hand-off: transfer the already-active root to a different manager package. */
     fun onTransferRoot() {
         val snapshot = kernelSnapshot ?: return
         if (!snapshot.deviceRooted) {
             send(GhostlockEffect.Toast(R.string.root_transfer_need_root))
             return
         }
-        val options = RootManager.builtIn
+        val options = RootManager.builtIn + RootManager.Custom
         mutableState.update {
             it.copy(
                 dialogVisible = true,
@@ -160,30 +160,50 @@ class GhostlockViewModel(
         dialogKind = DialogKind.TransferRoot
     }
 
-    private fun startExploit(snapshot: KernelSnapshot, targetManager: String?) {
+    private fun startExploit(snapshot: KernelSnapshot, targetManager: String?, transfer: Boolean = false) {
         val pair = snapshot.cpuPairs.getOrNull(snapshot.selectedCpuPair) ?: return
         if (!beginOperation()) return
         send(GhostlockEffect.KeepScreenAwake(true))
-        if (targetManager != null) {
+        if (transfer && targetManager != null) {
             appendLog("==== transfer root ====")
             appendLog("target manager: $targetManager")
+            appendLog("(root already active — re-using it to hand control to the target)")
         } else {
             appendLog("==== start ====")
         }
         appendLog("cpu pair: ${snapshot.cpuPairLabels.getOrElse(snapshot.selectedCpuPair) { pair.toString() }}")
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val code = runExploitUseCase(pair, targetManager, ::appendLog)
-                appendLog(if (code == 0) "result: exploit completed" else "result: exploit failed (exit code=$code)")
-                appendLog("exit code=$code")
-                if (code == 0) {
-                    // Open the target (or auto-detected) manager after success.
-                    val managerPkg = targetManager ?: repository.resolveActiveManagerPackage()
-                    if (managerPkg != null) {
-                        appendLog("manager: opening $managerPkg")
-                        send(GhostlockEffect.OpenManager(managerPkg))
-                    } else {
-                        appendLog("manager: no launcher activity found")
+                val code = runExploitUseCase(pair, targetManager, transfer, ::appendLog)
+                if (transfer) {
+                    when (code) {
+                        0 -> {
+                            appendLog("result: root handed over to $targetManager")
+                            send(GhostlockEffect.Toast(R.string.root_transfer_ok))
+                            targetManager?.let { send(GhostlockEffect.OpenManager(it)) }
+                        }
+                        3 -> {
+                            appendLog("result: transfer failed")
+                            appendLog("hint: the target manager's signature must be trusted by the active kernel module")
+                            send(GhostlockEffect.Toast(R.string.root_transfer_failed))
+                        }
+                        else -> {
+                            appendLog("result: transfer failed (exit code=$code)")
+                            send(GhostlockEffect.Toast(R.string.root_transfer_failed))
+                        }
+                    }
+                } else {
+                    appendLog(if (code == 0) "result: exploit completed" else "result: exploit failed (exit code=$code)")
+                    appendLog("exit code=$code")
+                    if (code == 0) {
+                        // Open the target (or auto-detected) manager after success.
+                        val managerPkg = targetManager ?: repository.resolveActiveManagerPackage()
+                        if (managerPkg != null) {
+                            appendLog("manager: opening $managerPkg")
+                            send(GhostlockEffect.OpenManager(managerPkg))
+                        } else {
+                            appendLog("manager: no launcher activity found")
+                        }
                     }
                 }
                 refreshSnapshot()
@@ -265,13 +285,24 @@ class GhostlockViewModel(
     fun onDialogItemSelected(index: Int) {
         if (dialogKind == DialogKind.TransferRoot) {
             dialogKind = DialogKind.Default
-            val manager = RootManager.builtIn.getOrNull(index)
+            val options = RootManager.builtIn + RootManager.Custom
+            val manager = options.getOrNull(index)
             dismissDialog()
-            if (manager != null) {
-                // Remember the target and re-run the activation against it.
-                selectManagerByPackage(manager.packageName)
-                val snapshot = kernelSnapshot
-                if (snapshot != null) startExploit(snapshot, targetManager = manager.packageName)
+            when {
+                manager == RootManager.Custom -> {
+                    // Ask for a custom target package, then transfer to it.
+                    mutableState.update {
+                        it.copy(
+                            dialogVisible = true,
+                            dialogType = DialogType.INPUT,
+                            dialogTitleRes = R.string.manager_custom_title,
+                            dialogMessageRes = R.string.manager_custom_hint,
+                            dialogInput = "",
+                        )
+                    }
+                    dialogKind = DialogKind.TransferCustom
+                }
+                manager != null -> transferRootTo(manager.packageName)
             }
             return
         }
@@ -288,6 +319,14 @@ class GhostlockViewModel(
         }
     }
 
+    /** Hand the active root over to [packageName] using the already-granted root. */
+    private fun transferRootTo(packageName: String) {
+        if (packageName.isEmpty()) return
+        selectManagerByPackage(packageName)
+        val snapshot = kernelSnapshot ?: return
+        startExploit(snapshot, targetManager = packageName, transfer = true)
+    }
+
     fun onDialogInputChange(value: String) = mutableState.update { it.copy(dialogInput = value) }
 
     fun onDialogConfirm(value: String) {
@@ -298,6 +337,14 @@ class GhostlockViewModel(
         when (dialogType) {
             DialogType.INPUT -> when (kind) {
                 DialogKind.CustomManager -> confirmCustomManager(value)
+                DialogKind.TransferCustom -> {
+                    val pkg = value.trim()
+                    if (!RootManager.isValidPackageName(pkg)) {
+                        send(GhostlockEffect.Toast(R.string.manager_custom_invalid))
+                    } else {
+                        transferRootTo(pkg)
+                    }
+                }
                 DialogKind.Default, DialogKind.TransferRoot -> parseUrl(value)
             }
             DialogType.NONE, DialogType.LIST -> Unit
