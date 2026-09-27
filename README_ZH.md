@@ -4,8 +4,13 @@
 
 > [!NOTE]
 > **这是适配 DikSU 的 fork 版本。** 基于 [YuKongA/ghostlock-app](https://github.com/YuKongA/ghostlock-app)（Apache-2.0）。
-> 新增支持 **DikSU** root 管理器（`me.diksu.kernelsu`，KernelSU 的分支）。
-> 仅修改了 root 管理器探测逻辑，漏洞利用本身未做改动。详见下方 [DikSU 支持](#diksu-支持)。
+>
+> 新增：
+> - **DikSU**（`me.diksu.kernelsu`）root 管理器支持
+> - **可自由切换的 root 管理器**（自动 / KernelSU / DikSU / ReSukiSU / KowSU / 自定义包名）
+> - **激活成功后自动打开管理器**主界面
+>
+> 漏洞利用本身未做改动。详见下方 [本 fork 的功能](#本-fork-的功能)。
 
 ## 支持的设备
 
@@ -130,17 +135,44 @@ App 也能直接生成这份 JSON：**解析完整包链接**（完整 OTA zip �
 ]
 ```
 
-## DikSU 支持
+## 本 fork 的功能
 
-本 fork 在支持的 root 管理器列表中新增了 **DikSU**（`me.diksu.kernelsu`，KernelSU 分支）。
+本 fork 保留上游的漏洞利用不变，只在其 root 管理器层上做扩展。
 
-改动内容（仅涉及 root 管理器探测）：
+### 1. DikSU 支持
+
+新增 **DikSU**（`me.diksu.kernelsu`，KernelSU 分支）作为支持的 root 管理器。
+
+### 2. 可自由切换的 root 管理器
+
+控制面板新增 **Root 管理器** 选择器：
+
+`自动` · `KernelSU` · `KernelSU Next` · `DikSU` · `ReSukiSU` · `KowSU` · `自定义…`
+
+- `自动`（默认）：与上游一致，自动识别已安装的管理器。
+- 选择具体某一项：强制 `ksud` 查找与 `late-load --package-name` 使用该包名。
+- `自定义…`：可手输任意包名（会按 Android 包名规则校验），适合隐藏/改名的管理器。
+- 选择会持久化保存（`SharedPreferences`），重启后仍生效。
+
+### 3. 激活成功后自动打开管理器
+
+漏洞利用成功后，App 会自动打开所选（或自动识别）管理器的主界面，方便立即确认 root 状态。
+
+### 改动内容
 
 | 文件 | 改动 |
 | ---- | ---- |
-| `src/core/main.c` | 在 `me.diksu.kernelsu` / `me.diksu.kernelsu.pr` 路径下查找 `ksud`（并加了扫描任意 `libksud.so` 的兜底逻辑）。 |
-| `src/core/main.c` | 探测已安装的管理器并传入 `ksud late-load ... --package-name <pkg>`，使 DikSU 指向正确的包名（其 `ksud` 默认包名为 `me.weishu.kernelsu`）。 |
-| `app/src/main/kotlin/com/ghostlock/app/data/AndroidGhostlockRepository.kt` | 在准备的 `ksud` 包名列表中新增 DikSU。 |
+| `src/core/main.c` | 在强制/已知管理器包名（含 `me.diksu.kernelsu[.pr]`）下查找 `ksud`，并加扫描任意 `libksud.so` 的兜底逻辑。 |
+| `src/core/main.c` | 读取 `GHOSTLOCK_MANAGER`，传入 `ksud late-load ... --package-name <pkg>`，使非 KernelSU 管理器也能正确指向。 |
+| `domain/model/RootManager.kt` | 新增模型：可选管理器列表 + 自定义包名校验。 |
+| `data/AndroidGhostlockRepository.kt` | 持久化选择、暴露当前管理器包名、通过 `GHOSTLOCK_MANAGER` 下发。 |
+| `ui/*` | 选择器、自定义包名输入框、激活后跳转管理器。 |
+
+### 新增环境变量
+
+| 变量 | 含义 |
+| ---- | ---- |
+| `GHOSTLOCK_MANAGER` | 强制指定管理器包名（空 = 自动识别）。由 UI 选择写入。 |
 
 漏洞利用路线、偏移量与 KMI 探测**均未改动**，与上游保持兼容。
 

@@ -4,8 +4,13 @@
 
 > [!NOTE]
 > **This is a DikSU-adapted fork.** Based on [YuKongA/ghostlock-app](https://github.com/YuKongA/ghostlock-app) (Apache-2.0).
-> It adds support for the **DikSU** root manager (`me.diksu.kernelsu`), a KernelSU fork.
-> Only the root-manager detection was changed; the exploit itself is untouched. See [DikSU support](#diksu-support) below.
+>
+> It adds:
+> - **DikSU** (`me.diksu.kernelsu`) root-manager support
+> - **Switchable root manager** (Auto / KernelSU / DikSU / ReSukiSU / KowSU / Custom package name)
+> - **Auto-open the manager** main screen after a successful activation
+>
+> The exploit itself is untouched. See [Fork features](#fork-features) below.
 
 ## Supported Devices
 
@@ -142,17 +147,44 @@ success.
 ]
 ```
 
-## DikSU Support
+## Fork features
 
-This fork adds **DikSU** (`me.diksu.kernelsu`, KernelSU fork) to the supported root managers.
+This fork keeps the upstream exploit intact and only builds on top of its root-manager layer.
 
-What changed (root-manager detection only):
+### 1. DikSU support
+
+Adds **DikSU** (`me.diksu.kernelsu`, a KernelSU fork) to the supported root managers.
+
+### 2. Switchable root manager
+
+A **Root manager** selector is available in the control panel:
+
+`Auto` · `KernelSU` · `KernelSU Next` · `DikSU` · `ReSukiSU` · `KowSU` · `Custom…`
+
+- `Auto` (default) auto-detects the installed manager, as upstream does.
+- Picking a specific entry forces `ksud` lookup and `late-load --package-name` to that package.
+- `Custom…` lets you type any package name (validated as a proper Android package). Useful for hidden/renamed manager builds.
+- The choice is persisted (`SharedPreferences`) and survives restarts.
+
+### 3. Auto-open the manager after activation
+
+When the exploit finishes successfully, the app opens the selected (or auto-detected) manager's main screen so you can confirm root status right away.
+
+### What changed
 
 | File | Change |
 | ---- | ------ |
-| `src/core/main.c` | Locate `ksud` under `me.diksu.kernelsu` / `me.diksu.kernelsu.pr` (plus a last-resort scan of any `libksud.so`). |
-| `src/core/main.c` | Detect the installed manager and pass `ksud late-load ... --package-name <pkg>`, so DikSU targets the correct package (its `ksud` defaults to `me.weishu.kernelsu`). |
-| `app/src/main/kotlin/com/ghostlock/app/data/AndroidGhostlockRepository.kt` | Add DikSU to the prepared `ksud` package list. |
+| `src/core/main.c` | Locate `ksud` under the forced/known manager packages (incl. `me.diksu.kernelsu[.pr]`), with a last-resort scan of any `libksud.so`. |
+| `src/core/main.c` | Read `GHOSTLOCK_MANAGER`; pass `ksud late-load ... --package-name <pkg>` so non-KernelSU managers are targeted correctly. |
+| `domain/model/RootManager.kt` | New model listing selectable managers + custom package validation. |
+| `data/AndroidGhostlockRepository.kt` | Persist the choice, expose the active manager package, forward it via `GHOSTLOCK_MANAGER`. |
+| `ui/*` | Selector, custom-package input dialog, and post-activation manager launch. |
+
+### Environment variables (added)
+
+| Variable | Meaning |
+| -------- | ------- |
+| `GHOSTLOCK_MANAGER` | Force a manager package (empty = auto-detect). Set from the UI selection. |
 
 The exploit route, offsets and KMI detection are **unchanged** and stay compatible with upstream.
 
