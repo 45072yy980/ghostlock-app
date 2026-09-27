@@ -6,8 +6,9 @@
 > **This is a DikSU-adapted fork.** Based on [YuKongA/ghostlock-app](https://github.com/YuKongA/ghostlock-app) (Apache-2.0).
 >
 > It adds:
-> - **DikSU** (`me.diksu.kernelsu`) root-manager support
+> - **Root hand-off** — transfer an already-active root to another manager (DikSU ⇄ KernelSU ⇄ ReSukiSU ⇄ …)
 > - **Switchable root manager** (Auto / KernelSU / DikSU / ReSukiSU / KowSU / Custom package name)
+> - **DikSU** (`me.diksu.kernelsu`) root-manager support
 > - **Auto-open the manager** main screen after a successful activation
 >
 > The exploit itself is untouched. See [Fork features](#fork-features) below.
@@ -149,13 +150,27 @@ success.
 
 ## Fork features
 
-This fork keeps the upstream exploit intact and only builds on top of its root-manager layer.
+This fork keeps the upstream exploit intact and builds on top of its root-manager layer.
 
-### 1. DikSU support
+### ⭐ 1. Root hand-off (transfer root to another manager)
+
+Once root is active, GhostLock can **hand root control over to a different manager** —
+no reboot, no re-flashing.
+
+When the device is detected as rooted, a **Root active** card appears with the current
+manager. Tap **Transfer root to another manager**, pick a target from the list, and
+GhostLock re-runs the activation targeting that manager package
+(`GHOSTLOCK_MANAGER=<pkg>` → `ksud late-load --package-name <pkg>`). The chosen manager
+then takes over root and opens automatically.
+
+Typical use: you rooted with DikSU, but want KernelSU / ReSukiSU to manage root instead —
+switch once and it's done.
+
+### 2. DikSU support
 
 Adds **DikSU** (`me.diksu.kernelsu`, a KernelSU fork) to the supported root managers.
 
-### 2. Switchable root manager
+### 3. Switchable / custom root manager
 
 A **Root manager** selector is available in the control panel:
 
@@ -164,27 +179,29 @@ A **Root manager** selector is available in the control panel:
 - `Auto` (default) auto-detects the installed manager, as upstream does.
 - Picking a specific entry forces `ksud` lookup and `late-load --package-name` to that package.
 - `Custom…` lets you type any package name (validated as a proper Android package). Useful for hidden/renamed manager builds.
+- Installed managers are marked with `✓` in the list.
 - The choice is persisted (`SharedPreferences`) and survives restarts.
 
-### 3. Auto-open the manager after activation
+### 4. Auto-open the manager after activation
 
-When the exploit finishes successfully, the app opens the selected (or auto-detected) manager's main screen so you can confirm root status right away.
+When the exploit finishes successfully, the app opens the selected (or auto-detected)
+manager's main screen so you can confirm root status right away.
 
 ### What changed
 
 | File | Change |
 | ---- | ------ |
 | `src/core/main.c` | Locate `ksud` under the forced/known manager packages (incl. `me.diksu.kernelsu[.pr]`), with a last-resort scan of any `libksud.so`. |
-| `src/core/main.c` | Read `GHOSTLOCK_MANAGER`; pass `ksud late-load ... --package-name <pkg>` so non-KernelSU managers are targeted correctly. |
+| `src/core/main.c` | Read `GHOSTLOCK_MANAGER`; pass `ksud late-load ... --package-name <pkg>` so non-KernelSU managers are targeted correctly (this is what powers root hand-off). |
 | `domain/model/RootManager.kt` | New model listing selectable managers + custom package validation. |
-| `data/AndroidGhostlockRepository.kt` | Persist the choice, expose the active manager package, forward it via `GHOSTLOCK_MANAGER`. |
-| `ui/*` | Selector, custom-package input dialog, and post-activation manager launch. |
+| `data/AndroidGhostlockRepository.kt` | Persist the choice; detect installed managers and rooted state; accept a per-run target manager; expose the active manager package. |
+| `ui/*` | Root-active card, transfer-root picker, manager selector, custom-package input dialog, post-activation launch. |
 
 ### Environment variables (added)
 
 | Variable | Meaning |
 | -------- | ------- |
-| `GHOSTLOCK_MANAGER` | Force a manager package (empty = auto-detect). Set from the UI selection. |
+| `GHOSTLOCK_MANAGER` | Force a manager package (empty = auto-detect). Set from the UI selection or a root hand-off. |
 
 The exploit route, offsets and KMI detection are **unchanged** and stay compatible with upstream.
 
