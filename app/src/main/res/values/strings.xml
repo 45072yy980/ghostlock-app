@@ -61,4 +61,10 @@
     <string name="manager_custom_hint">Manager package name (e.g. me.diksu.kernelsu)</string>
     <string name="manager_custom_title">Custom manager package</string>
     <string name="manager_custom_invalid">Enter a valid package name</string>
+    <string name="root_status_active">Root active</string>
+    <string name="root_current_manager">Current manager: %1$s</string>
+    <string name="root_transfer_hint">Grant root to a different manager: pick it below, then transfer. The selected manager takes over root control.</string>
+    <string name="action_transfer_root">Transfer root to another manager</string>
+    <string name="root_transfer_need_root">Root must be active before transferring</string>
+    <string name="root_transfer_pick">Transfer root to</string>
 </resources>

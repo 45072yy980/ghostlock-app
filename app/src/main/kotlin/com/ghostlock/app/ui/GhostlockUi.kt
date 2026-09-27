@@ -141,6 +141,7 @@ interface GhostlockActions {
     fun onTcpRouteChanged(enabled: Boolean)
     fun onManagerSelected(packageName: String)
     fun onManagerCustom()
+    fun onTransferRoot()
     fun onDialogItemSelected(index: Int)
     fun onDialogInputChange(value: String)
     fun onDialogConfirm(value: String)
@@ -568,6 +569,15 @@ private fun ControlPanel(
                 .fillMaxWidth()
                 .padding(top = 12.dp),
         )
+        if (state.deviceRooted) {
+            RootTransferCard(
+                state = state,
+                actions = actions,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 12.dp),
+            )
+        }
         if (state.cpuPairLabels.isNotEmpty()) {
             Card(modifier = modifier.padding(top = 12.dp)) {
                 OverlaySpinnerPreference(
@@ -712,6 +722,47 @@ private fun DeviceInfoCard(
             }
         }
     }
+}
+
+@Composable
+private fun RootTransferCard(
+    state: GhostlockUiState,
+    actions: GhostlockActions,
+    modifier: Modifier = Modifier,
+) {
+    Card(modifier = modifier, insideMargin = PaddingValues(16.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(
+                text = stringResource(R.string.root_status_active),
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+                color = MiuixTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = stringResource(R.string.root_current_manager, currentManagerLabel(state.managerPackage, state.installedManagers)),
+                fontSize = 14.sp,
+                color = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.68f),
+            )
+            Text(
+                text = stringResource(R.string.root_transfer_hint),
+                fontSize = 14.sp,
+                color = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.68f),
+            )
+            TextButton(
+                text = stringResource(R.string.action_transfer_root),
+                enabled = !state.running,
+                onClick = actions::onTransferRoot,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+}
+
+/** Human-readable label for the current manager package. */
+private fun currentManagerLabel(packageName: String, installed: List<String>): String {
+    if (packageName.isEmpty()) return "Auto"
+    val builtIn = RootManager.builtIn.firstOrNull { it.packageName == packageName }
+    return builtIn?.displayName ?: packageName
 }
 
 @Composable

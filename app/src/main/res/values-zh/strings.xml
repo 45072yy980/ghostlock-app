@@ -61,4 +61,10 @@
     <string name="manager_custom_hint">管理器包名（如 me.diksu.kernelsu）</string>
     <string name="manager_custom_title">自定义管理器包名</string>
     <string name="manager_custom_invalid">请输入有效的包名</string>
+    <string name="root_status_active">Root 已激活</string>
+    <string name="root_current_manager">当前管理器：%1$s</string>
+    <string name="root_transfer_hint">将 root 权限移交给其他管理器：在下方选择目标管理器后点击移交，新的管理器将接管 root 控制权。</string>
+    <string name="action_transfer_root">移交 root 给其他管理器</string>
+    <string name="root_transfer_need_root">需先激活 root 才能移交</string>
+    <string name="root_transfer_pick">移交 root 给</string>
 </resources>

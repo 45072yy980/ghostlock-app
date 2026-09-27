@@ -242,12 +242,13 @@ class AndroidGhostlockRepository(context: Context) : GhostlockRepository {
         }
     }
 
-    override suspend fun runExploit(pair: CpuPair, onLog: (String) -> Unit): Int {
+    override suspend fun runExploit(pair: CpuPair, targetManager: String?, onLog: (String) -> Unit): Int {
         val workDir = filesDir
         return try {
             val binary = File(appContext.applicationInfo.nativeLibraryDir, "libghostlock.so")
             require(binary.isFile) { "missing native binary: ${binary.absolutePath}" }
-            if (prepareKsud(workDir, onLog) != null) onLog("ksud ready") else onLog("warning: ksud not found")
+            val effectiveManager = targetManager ?: managerPackage
+            if (prepareKsud(workDir, onLog, effectiveManager) != null) onLog("ksud ready") else onLog("warning: ksud not found")
             // the root script creates its log as root, so one name per run
             // keeps the last run's lines out of this run's log
             val ksuLog = File(workDir, "$KsuLogName.${System.currentTimeMillis()}")
@@ -283,7 +284,7 @@ class AndroidGhostlockRepository(context: Context) : GhostlockRepository {
                     }
                     if (safeModeEnabled) environment()["GHOSTLOCK_DISABLE_MODULES"] = "1"
                     if (!tcpRouteEnabled) environment()["GHOSTLOCK_TCP_ROUTE"] = "0"
-                    if (managerPackage.isNotEmpty()) environment()["GHOSTLOCK_MANAGER"] = managerPackage
+                    if (effectiveManager.isNotEmpty()) environment()["GHOSTLOCK_MANAGER"] = effectiveManager
                 }
             try {
                 runProcess(command, onLog = {}, captureOutput = false)
@@ -530,10 +531,10 @@ class AndroidGhostlockRepository(context: Context) : GhostlockRepository {
 
     private fun firstValidProperty(vararg keys: String): String? = keys.asSequence().firstNotNullOfOrNull { validDeviceName(systemProperty(it)) }
 
-    private fun prepareKsud(workDir: File, onLog: (String) -> Unit): File? {
+    private fun prepareKsud(workDir: File, onLog: (String) -> Unit, preferredManager: String = managerPackage): File? {
         val defaultPackages = listOf("me.weishu.kernelsu.pr", "me.weishu.kernelsu", "me.diksu.kernelsu", "me.diksu.kernelsu.pr", "com.resukisu.resukisu", "com.kowx712.supermanager")
         // A user-selected manager takes priority; fall back to the full list for auto mode.
-        val packages = if (managerPackage.isNotEmpty()) listOf(managerPackage) + defaultPackages else defaultPackages
+        val packages = if (preferredManager.isNotEmpty()) listOf(preferredManager) + defaultPackages else defaultPackages
         var installed = false
         for (packageName in packages) {
             val appInfo = runCatching { appContext.packageManager.getApplicationInfo(packageName, 0) }.getOrNull() ?: continue

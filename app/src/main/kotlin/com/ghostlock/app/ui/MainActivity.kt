@@ -134,6 +134,7 @@ private fun GhostlockRoute(
             override fun onTcpRouteChanged(enabled: Boolean) = viewModel.toggleTcpRoute(enabled)
             override fun onManagerSelected(packageName: String) = viewModel.selectManagerByPackage(packageName)
             override fun onManagerCustom() = viewModel.promptCustomManager()
+            override fun onTransferRoot() = viewModel.onTransferRoot()
             override fun onDialogItemSelected(index: Int) = viewModel.onDialogItemSelected(index)
             override fun onDialogInputChange(value: String) = viewModel.onDialogInputChange(value)
             override fun onDialogConfirm(value: String) = viewModel.onDialogConfirm(value)

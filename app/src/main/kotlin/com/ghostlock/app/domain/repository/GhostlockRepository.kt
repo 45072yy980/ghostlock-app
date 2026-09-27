@@ -42,7 +42,7 @@ interface GhostlockRepository {
 
     suspend fun publishOffsets(candidate: OffsetCandidate): String
 
-    suspend fun runExploit(pair: CpuPair, onLog: (String) -> Unit): Int
+    suspend fun runExploit(pair: CpuPair, targetManager: String? = null, onLog: (String) -> Unit): Int
 
     /**
      * Resolve the package of the manager to open after a successful activation.

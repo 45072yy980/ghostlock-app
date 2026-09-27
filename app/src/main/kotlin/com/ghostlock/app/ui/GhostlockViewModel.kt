@@ -67,7 +67,7 @@ class GhostlockViewModel(
     private var pendingConfirmation: PendingConfirmation? = null
     private var dialogKind: DialogKind = DialogKind.Default
 
-    private enum class DialogKind { Default, CustomManager }
+    private enum class DialogKind { Default, CustomManager, TransferRoot }
 
     fun initialize() {
         if (initialized) return
@@ -136,19 +136,49 @@ class GhostlockViewModel(
             }
             return
         }
+        startExploit(snapshot, targetManager = null)
+    }
+
+    /** Root hand-off: re-run the activation targeting a specific manager package. */
+    fun onTransferRoot() {
+        val snapshot = kernelSnapshot ?: return
+        if (!snapshot.deviceRooted) {
+            send(GhostlockEffect.Toast(R.string.root_transfer_need_root))
+            return
+        }
+        val options = RootManager.builtIn
+        mutableState.update {
+            it.copy(
+                dialogVisible = true,
+                dialogType = DialogType.LIST,
+                dialogTitleRes = R.string.root_transfer_pick,
+                dialogItems = options.map { m -> managerLabelFor(m, snapshot.installedManagers) },
+                dialogItemResIds = emptyList(),
+                dialogCurrentItemIndex = options.indexOfFirst { it.packageName == snapshot.managerPackage },
+            )
+        }
+        dialogKind = DialogKind.TransferRoot
+    }
+
+    private fun startExploit(snapshot: KernelSnapshot, targetManager: String?) {
         val pair = snapshot.cpuPairs.getOrNull(snapshot.selectedCpuPair) ?: return
         if (!beginOperation()) return
         send(GhostlockEffect.KeepScreenAwake(true))
-        appendLog("==== start ====")
+        if (targetManager != null) {
+            appendLog("==== transfer root ====")
+            appendLog("target manager: $targetManager")
+        } else {
+            appendLog("==== start ====")
+        }
         appendLog("cpu pair: ${snapshot.cpuPairLabels.getOrElse(snapshot.selectedCpuPair) { pair.toString() }}")
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val code = runExploitUseCase(pair, ::appendLog)
+                val code = runExploitUseCase(pair, targetManager, ::appendLog)
                 appendLog(if (code == 0) "result: exploit completed" else "result: exploit failed (exit code=$code)")
                 appendLog("exit code=$code")
                 if (code == 0) {
-                    // Open the manager main screen after a successful activation.
-                    val managerPkg = repository.resolveActiveManagerPackage()
+                    // Open the target (or auto-detected) manager after success.
+                    val managerPkg = targetManager ?: repository.resolveActiveManagerPackage()
                     if (managerPkg != null) {
                         appendLog("manager: opening $managerPkg")
                         send(GhostlockEffect.OpenManager(managerPkg))
@@ -156,6 +186,7 @@ class GhostlockViewModel(
                         appendLog("manager: no launcher activity found")
                     }
                 }
+                refreshSnapshot()
             } finally {
                 endOperation()
                 send(GhostlockEffect.KeepScreenAwake(false))
@@ -232,6 +263,18 @@ class GhostlockViewModel(
     }
 
     fun onDialogItemSelected(index: Int) {
+        if (dialogKind == DialogKind.TransferRoot) {
+            dialogKind = DialogKind.Default
+            val manager = RootManager.builtIn.getOrNull(index)
+            dismissDialog()
+            if (manager != null) {
+                // Remember the target and re-run the activation against it.
+                selectManagerByPackage(manager.packageName)
+                val snapshot = kernelSnapshot
+                if (snapshot != null) startExploit(snapshot, targetManager = manager.packageName)
+            }
+            return
+        }
         val candidates = exportCandidates
         dismissDialog()
         if (candidates.isNotEmpty()) {
@@ -545,6 +588,11 @@ class GhostlockViewModel(
 
     private fun send(effect: GhostlockEffect) {
         effectChannel.trySend(effect)
+    }
+
+    private fun managerLabelFor(manager: RootManager, installed: List<String>): String {
+        val mark = if (manager.packageName in installed) " ✓" else ""
+        return manager.displayName + mark
     }
 
     private fun toneColor(tone: LogTone): Int = when (tone) {
