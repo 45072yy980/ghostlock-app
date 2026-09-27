@@ -6,7 +6,7 @@
 > **这是适配 DikSU 的 fork 版本。** 基于 [YuKongA/ghostlock-app](https://github.com/YuKongA/ghostlock-app)（Apache-2.0）。
 >
 > 新增：
-> - **Root 移交** —— 把已激活的 root 移交给另一个管理器（DikSU ⇄ KernelSU ⇄ ReSukiSU ⇄ …）
+> - **Root 移交** —— 把已激活的 root 移交给另一个管理器（DikSU ⇄ KernelSU ⇄ ReSukiSU ⇄ …，或自定义包名）
 > - **可自由切换的 root 管理器**（自动 / KernelSU / DikSU / ReSukiSU / KowSU / 自定义包名）
 > - **DikSU**（`me.diksu.kernelsu`）root 管理器支持
 > - **激活成功后自动打开管理器**主界面
@@ -142,14 +142,23 @@ App 也能直接生成这份 JSON：**解析完整包链接**（完整 OTA zip �
 
 ### ⭐ 1. Root 移交（把 root 控制权转给其他管理器）
 
-当 root 已激活后，GhostLock 可以把 **root 控制权移交给另一个管理器** —— 无需重启、无需重新刷机。
+当 root 已激活后，GhostLock 可以把 **root 控制权移交给另一个管理器** —— 无需重启、无需重跑漏洞利用。
 
 检测到设备已有 root 时，界面会出现一张 **「Root 已激活」** 卡片，显示当前管理器。
-点击 **「移交 root 给其他管理器」**，从列表中选一个目标管理器，GhostLock 会以该管理器包名
-**重新执行一次激活**（`GHOSTLOCK_MANAGER=<包名>` → `ksud late-load --package-name <包名>`），
-选中的管理器随即接管 root 并自动打开。
+点击 **「移交 root 给其他管理器」**，从列表中选择目标（或选 `自定义…` 手动输入任意包名），
+GhostLock 会把**已经激活的 root** 移交给该管理器。
+
+原理：ksud 执行 `late-load --package-name <目标>`；即使内核模块已加载，ksud 也会重新执行
+late-load 阶段，并**重启 `--package-name` 指定的管理器**（`am force-stop` + `am start`）。
+GhostLock 调用的是**目标管理器自己的 `libksud.so`**，因此目标管理器会接管 root 并自动打开。
 
 典型场景：你用 DikSU 拿到了 root，但想改用 KernelSU / ReSukiSU 来管理 root —— 切一次即可完成。
+
+> **前提条件**
+> - 目标管理器必须**已安装**（`/data/app` 下要存在它的 `libksud.so`）。
+> - 目标管理器的 APK 签名必须**被当前内核模块认可**（即其证书哈希与模块编译时的
+>   `EXPECTED_HASH` 一致）。同一签名渠道构建的管理器可以互切；签名不同的官方构建会被
+>   内核拒绝，移交会提示失败。
 
 ### 2. DikSU 支持
 
@@ -176,7 +185,8 @@ App 也能直接生成这份 JSON：**解析完整包链接**（完整 OTA zip �
 | 文件 | 改动 |
 | ---- | ---- |
 | `src/core/main.c` | 在强制/已知管理器包名（含 `me.diksu.kernelsu[.pr]`）下查找 `ksud`，并加扫描任意 `libksud.so` 的兜底逻辑。 |
-| `src/core/main.c` | 读取 `GHOSTLOCK_MANAGER`，传入 `ksud late-load ... --package-name <pkg>`，使非 KernelSU 管理器也能正确指向（**root 移交就靠它实现**）。 |
+| `src/core/main.c` | 读取 `GHOSTLOCK_MANAGER`，传入 `ksud late-load ... --package-name <pkg>`，使非 KernelSU 管理器也能正确指向。 |
+| `src/core/main.c` | 读取 `GHOSTLOCK_TRANSFER`；当 root 已激活时跳过漏洞利用，直接调用**目标管理器的 `libksud.so` late-load** 完成移交。 |
 | `domain/model/RootManager.kt` | 新增模型：可选管理器列表 + 自定义包名校验。 |
 | `data/AndroidGhostlockRepository.kt` | 持久化选择；检测已装管理器与 root 状态；支持单次运行指定目标管理器；暴露当前管理器包名。 |
 | `ui/*` | Root 激活卡片、移交选择器、管理器选择器、自定义包名输入框、激活后跳转。 |
@@ -186,6 +196,7 @@ App 也能直接生成这份 JSON：**解析完整包链接**（完整 OTA zip �
 | 变量 | 含义 |
 | ---- | ---- |
 | `GHOSTLOCK_MANAGER` | 强制指定管理器包名（空 = 自动识别）。由 UI 选择或 root 移交写入。 |
+| `GHOSTLOCK_TRANSFER` | `1` = 移交模式：root 已激活，直接复用（不再跑漏洞利用），调用目标管理器的 ksud。 |
 
 漏洞利用路线、偏移量与 KMI 探测**均未改动**，与上游保持兼容。
 

@@ -6,7 +6,7 @@
 > **This is a DikSU-adapted fork.** Based on [YuKongA/ghostlock-app](https://github.com/YuKongA/ghostlock-app) (Apache-2.0).
 >
 > It adds:
-> - **Root hand-off** — transfer an already-active root to another manager (DikSU ⇄ KernelSU ⇄ ReSukiSU ⇄ …)
+> - **Root hand-off** — transfer an already-active root to another manager (DikSU ⇄ KernelSU ⇄ ReSukiSU ⇄ …, or a custom package)
 > - **Switchable root manager** (Auto / KernelSU / DikSU / ReSukiSU / KowSU / Custom package name)
 > - **DikSU** (`me.diksu.kernelsu`) root-manager support
 > - **Auto-open the manager** main screen after a successful activation
@@ -155,16 +155,28 @@ This fork keeps the upstream exploit intact and builds on top of its root-manage
 ### ⭐ 1. Root hand-off (transfer root to another manager)
 
 Once root is active, GhostLock can **hand root control over to a different manager** —
-no reboot, no re-flashing.
+no reboot, no re-running the exploit.
 
 When the device is detected as rooted, a **Root active** card appears with the current
-manager. Tap **Transfer root to another manager**, pick a target from the list, and
-GhostLock re-runs the activation targeting that manager package
-(`GHOSTLOCK_MANAGER=<pkg>` → `ksud late-load --package-name <pkg>`). The chosen manager
-then takes over root and opens automatically.
+manager. Tap **Transfer root to another manager**, pick a target from the list (or choose
+`Custom…` and type any package name), and GhostLock hands the *already-active* root over
+to that manager.
+
+How it works: GitHub's ksud runs `late-load` with `--package-name <target>`; even when the
+kernel module is already loaded, ksud re-runs the late-load stage and **restarts the
+manager given by `--package-name`**, along with `am force-stop` / `am start`. GhostLock
+invokes the **target manager's own `libksud.so`**, so the target takes over root and opens
+automatically.
 
 Typical use: you rooted with DikSU, but want KernelSU / ReSukiSU to manage root instead —
 switch once and it's done.
+
+> **Requirements**
+> - The target manager must be **installed** (its `libksud.so` must exist under `/data/app`).
+> - The target manager's APK signature must be **trusted by the active kernel module**
+>   (i.e. its certificate hash matches the `EXPECTED_HASH` the module was compiled with).
+>   Managers built from the same signing channel work; a differently-signed official build
+>   will be rejected by the kernel and the transfer will report a failure.
 
 ### 2. DikSU support
 
@@ -192,7 +204,8 @@ manager's main screen so you can confirm root status right away.
 | File | Change |
 | ---- | ------ |
 | `src/core/main.c` | Locate `ksud` under the forced/known manager packages (incl. `me.diksu.kernelsu[.pr]`), with a last-resort scan of any `libksud.so`. |
-| `src/core/main.c` | Read `GHOSTLOCK_MANAGER`; pass `ksud late-load ... --package-name <pkg>` so non-KernelSU managers are targeted correctly (this is what powers root hand-off). |
+| `src/core/main.c` | Read `GHOSTLOCK_MANAGER`; pass `ksud late-load ... --package-name <pkg>` so non-KernelSU managers are targeted correctly. |
+| `src/core/main.c` | Read `GHOSTLOCK_TRANSFER`; when root is already active, skip the exploit and invoke the **target manager's `libksud.so` late-load** to hand root over. |
 | `domain/model/RootManager.kt` | New model listing selectable managers + custom package validation. |
 | `data/AndroidGhostlockRepository.kt` | Persist the choice; detect installed managers and rooted state; accept a per-run target manager; expose the active manager package. |
 | `ui/*` | Root-active card, transfer-root picker, manager selector, custom-package input dialog, post-activation launch. |
@@ -202,6 +215,7 @@ manager's main screen so you can confirm root status right away.
 | Variable | Meaning |
 | -------- | ------- |
 | `GHOSTLOCK_MANAGER` | Force a manager package (empty = auto-detect). Set from the UI selection or a root hand-off. |
+| `GHOSTLOCK_TRANSFER` | `1` = hand-off mode: root is already active, so reuse it (no exploit) and call the target manager's ksud. |
 
 The exploit route, offsets and KMI detection are **unchanged** and stay compatible with upstream.
 
