@@ -91,7 +91,7 @@ class AndroidGhostlockRepository(context: Context) : GhostlockRepository {
         managerPackage = packageName
         appContext.getSharedPreferences("ghostlock_prefs", Context.MODE_PRIVATE).edit {
             putString("manager_package", packageName)
-        }.apply()
+        }
     }
 
     private fun restoreManagerPackage() {
