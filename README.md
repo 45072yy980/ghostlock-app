@@ -2,6 +2,11 @@
 
 > 中文: [README_ZH.md](README_ZH.md)
 
+> [!NOTE]
+> **This is a DikSU-adapted fork.** Based on [YuKongA/ghostlock-app](https://github.com/YuKongA/ghostlock-app) (Apache-2.0).
+> It adds support for the **DikSU** root manager (`me.diksu.kernelsu`), a KernelSU fork.
+> Only the root-manager detection was changed; the exploit itself is untouched. See [DikSU support](#diksu-support) below.
+
 ## Supported Devices
 
 | Kernel                                                 | Devices                                                          |
@@ -63,7 +68,7 @@ Kernels are matched by exact `uname -r`; unsupported builds are rejected and the
 
 ## Quick Start
 
-Open **GhostLock** and tap **Run**. KernelSU (`me.weishu.kernelsu`), ReSukiSU (`com.resukisu.resukisu`), or KowSU (`com.kowx712.supermanager`) provides `ksud` for module loading; without it, W1/W2 still grant uid 0 but no module is loaded.
+Open **GhostLock** and tap **Run**. KernelSU (`me.weishu.kernelsu`), **DikSU (`me.diksu.kernelsu`)**, ReSukiSU (`com.resukisu.resukisu`), or KowSU (`com.kowx712.supermanager`) provides `ksud` for module loading; without it, W1/W2 still grant uid 0 but no module is loaded.
 
 The route races two cores. On the 6.6/6.12 tree-waiter kernels the main thread hammers `select` while a consumer thread perturbs the waiter's priority; on the 6.1 compact-waiter kernels the main thread drives `getsockopt(TCP_ZEROCOPY_RECEIVE)` through a punched-hole page instead (`GHOSTLOCK_TCP_ROUTE=0` forces the pselect route). The pair defaults to the big cores (fallback 0/1), overridable via `GHOSTLOCK_CORE` / `GHOSTLOCK_CONSUMER_CORE`.
 
@@ -136,6 +141,20 @@ success.
   }
 ]
 ```
+
+## DikSU Support
+
+This fork adds **DikSU** (`me.diksu.kernelsu`, KernelSU fork) to the supported root managers.
+
+What changed (root-manager detection only):
+
+| File | Change |
+| ---- | ------ |
+| `src/core/main.c` | Locate `ksud` under `me.diksu.kernelsu` / `me.diksu.kernelsu.pr` (plus a last-resort scan of any `libksud.so`). |
+| `src/core/main.c` | Detect the installed manager and pass `ksud late-load ... --package-name <pkg>`, so DikSU targets the correct package (its `ksud` defaults to `me.weishu.kernelsu`). |
+| `app/src/main/kotlin/com/ghostlock/app/data/AndroidGhostlockRepository.kt` | Add DikSU to the prepared `ksud` package list. |
+
+The exploit route, offsets and KMI detection are **unchanged** and stay compatible with upstream.
 
 ## Credits & License
 

@@ -2,6 +2,11 @@
 
 > English: [README.md](README.md)
 
+> [!NOTE]
+> **这是适配 DikSU 的 fork 版本。** 基于 [YuKongA/ghostlock-app](https://github.com/YuKongA/ghostlock-app)（Apache-2.0）。
+> 新增支持 **DikSU** root 管理器（`me.diksu.kernelsu`，KernelSU 的分支）。
+> 仅修改了 root 管理器探测逻辑，漏洞利用本身未做改动。详见下方 [DikSU 支持](#diksu-支持)。
+
 ## 支持的设备
 
 | Kernel                                                 | Devices                                                          |
@@ -61,7 +66,7 @@
 
 ## 快速开始
 
-打开 **GhostLock** 点击 **执行**。需先装 KernelSU（`me.weishu.kernelsu`）、ReSukiSU（`com.resukisu.resukisu`）或 KowSU（`com.kowx712.supermanager`）以提供 `ksud`；缺 `ksud` 时 W1/W2 仍可拿到 uid 0，但不会加载模块。
+打开 **GhostLock** 点击 **执行**。需先装 KernelSU（`me.weishu.kernelsu`）、**DikSU（`me.diksu.kernelsu`）**、ReSukiSU（`com.resukisu.resukisu`）或 KowSU（`com.kowx712.supermanager`）以提供 `ksud`；缺 `ksud` 时 W1/W2 仍可拿到 uid 0，但不会加载模块。
 
 路线是双核竞争。6.6/6.12 树形 waiter 内核上主线程跑 `select` 爆破、consumer 线程扰动 waiter 优先级；6.1 紧凑 waiter 内核上主线程改走 `getsockopt(TCP_ZEROCOPY_RECEIVE)` 打洞页写入（`GHOSTLOCK_TCP_ROUTE=0` 强制回退 pselect 路线）。核心对默认取大核（不可用时回退 0/1），可用 `GHOSTLOCK_CORE` / `GHOSTLOCK_CONSUMER_CORE` 覆盖。
 
@@ -124,6 +129,20 @@ App 也能直接生成这份 JSON：**解析完整包链接**（完整 OTA zip �
   }
 ]
 ```
+
+## DikSU 支持
+
+本 fork 在支持的 root 管理器列表中新增了 **DikSU**（`me.diksu.kernelsu`，KernelSU 分支）。
+
+改动内容（仅涉及 root 管理器探测）：
+
+| 文件 | 改动 |
+| ---- | ---- |
+| `src/core/main.c` | 在 `me.diksu.kernelsu` / `me.diksu.kernelsu.pr` 路径下查找 `ksud`（并加了扫描任意 `libksud.so` 的兜底逻辑）。 |
+| `src/core/main.c` | 探测已安装的管理器并传入 `ksud late-load ... --package-name <pkg>`，使 DikSU 指向正确的包名（其 `ksud` 默认包名为 `me.weishu.kernelsu`）。 |
+| `app/src/main/kotlin/com/ghostlock/app/data/AndroidGhostlockRepository.kt` | 在准备的 `ksud` 包名列表中新增 DikSU。 |
+
+漏洞利用路线、偏移量与 KMI 探测**均未改动**，与上游保持兼容。
 
 ## 来源与许可证
 
