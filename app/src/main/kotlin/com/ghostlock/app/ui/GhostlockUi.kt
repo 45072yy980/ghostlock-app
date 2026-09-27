@@ -138,6 +138,7 @@ interface GhostlockActions {
     fun onSafeModeChanged(enabled: Boolean)
     fun onTcpRouteChanged(enabled: Boolean)
     fun onManagerSelected(packageName: String)
+    fun onManagerCustom()
     fun onDialogItemSelected(index: Int)
     fun onDialogInputChange(value: String)
     fun onDialogConfirm(value: String)
@@ -566,13 +567,15 @@ private fun ControlPanel(
                 items = RootManager.selectable.map {
                     DropdownItem(icon = null, title = it.displayName)
                 },
-                selectedIndex = RootManager.selectable
-                    .indexOfFirst { it.packageName == state.managerPackage }
-                    .coerceAtLeast(0),
+                selectedIndex = managerSelectedIndex(state.managerPackage),
                 showValue = true,
                 onSelectedIndexChange = { index ->
                     val manager = RootManager.selectable.getOrNull(index)
-                    if (manager != null) actions.onManagerSelected(manager.packageName)
+                    when {
+                        manager == null -> Unit
+                        manager == RootManager.Custom -> actions.onManagerCustom()
+                        else -> actions.onManagerSelected(manager.packageName)
+                    }
                 }
             )
         }
@@ -816,4 +819,15 @@ private fun lineColor(color: Int): Color = when (color) {
     0xFFFFC94D.toInt() -> Color(0xFFFFC94D)
     0xFF60A5FA.toInt() -> Color(0xFF60A5FA)
     else -> Color(0xFFD1D5DB)
+}
+
+/** Index of the spinner entry to highlight for the given custom/built-in package. */
+private fun managerSelectedIndex(packageName: String): Int {
+    RootManager.selectable.indexOfFirst { it.packageName == packageName && packageName.isNotEmpty() }
+        .takeIf { it >= 0 }
+        ?.let { return it }
+    if (RootManager.isCustomPackage(packageName)) {
+        return RootManager.selectable.indexOf(RootManager.Custom)
+    }
+    return RootManager.selectable.indexOf(RootManager.Auto).coerceAtLeast(0)
 }

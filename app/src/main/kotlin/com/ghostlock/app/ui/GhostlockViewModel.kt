@@ -8,6 +8,7 @@ import com.ghostlock.app.domain.model.LogTone
 import com.ghostlock.app.domain.model.OffsetCandidate
 import com.ghostlock.app.domain.model.OffsetImportResult
 import com.ghostlock.app.domain.model.ParseResult
+import com.ghostlock.app.domain.model.RootManager
 import com.ghostlock.app.domain.repository.GhostlockRepository
 import com.ghostlock.app.domain.usecase.ExportOffsetsUseCase
 import com.ghostlock.app.domain.usecase.FormatLogUseCase
@@ -64,6 +65,9 @@ class GhostlockViewModel(
     private var pendingBootPath: String? = null
     private var exportCandidates: List<OffsetCandidate> = emptyList()
     private var pendingConfirmation: PendingConfirmation? = null
+    private var dialogKind: DialogKind = DialogKind.Default
+
+    private enum class DialogKind { Default, CustomManager }
 
     fun initialize() {
         if (initialized) return
@@ -96,6 +100,28 @@ class GhostlockViewModel(
         kernelSnapshot = kernelSnapshot?.copy(managerPackage = packageName)
         mutableState.update { it.copy(managerPackage = packageName) }
         send(GhostlockEffect.Toast(R.string.manager_toast_switched))
+    }
+
+    /** Opens an input dialog to type a custom manager package name. */
+    fun promptCustomManager() {
+        mutableState.update {
+            it.copy(
+                dialogVisible = true,
+                dialogType = DialogType.INPUT,
+                dialogMessageRes = R.string.manager_custom_hint,
+                dialogInput = state.value.managerPackage.takeIf { RootManager.isCustomPackage(it) }.orEmpty(),
+            )
+        }
+        dialogKind = DialogKind.CustomManager
+    }
+
+    private fun confirmCustomManager(value: String) {
+        val packageName = value.trim()
+        if (!RootManager.isValidPackageName(packageName)) {
+            send(GhostlockEffect.Toast(R.string.manager_custom_invalid))
+            return
+        }
+        selectManagerByPackage(packageName)
     }
 
     fun onRun() {
@@ -220,9 +246,14 @@ class GhostlockViewModel(
 
     fun onDialogConfirm(value: String) {
         val dialogType = state.value.dialogType
+        val kind = dialogKind
+        dialogKind = DialogKind.Default
         dismissDialog(clearConfirmation = false)
         when (dialogType) {
-            DialogType.INPUT -> parseUrl(value)
+            DialogType.INPUT -> when (kind) {
+                DialogKind.CustomManager -> confirmCustomManager(value)
+                DialogKind.Default -> parseUrl(value)
+            }
             DialogType.NONE, DialogType.LIST -> Unit
         }
     }
