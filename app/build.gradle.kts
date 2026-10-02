@@ -177,6 +177,7 @@ kotlin {
 
 tasks.named("preBuild") {
     dependsOn(rootProject.tasks.named("prepareGhostlockJniLibs"))
+    dependsOn(rootProject.tasks.named("prepareGhostlock43074JniLibs"))
     dependsOn(rootProject.tasks.named("prepareGhostlockExtractJniLibs"))
     dependsOn(tasks.named("generateSupportedKernels"))
 }

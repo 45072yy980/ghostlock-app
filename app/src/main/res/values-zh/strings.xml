@@ -69,4 +69,9 @@
     <string name="root_transfer_pick">移交 root 给</string>
     <string name="root_transfer_ok">Root 已移交</string>
     <string name="root_transfer_failed">移交失败——目标管理器未安装，或不被当前内核认可</string>
+    <string name="alt_exploit_title">备用漏洞利用</string>
+    <string name="alt_exploit_summary">直接在内核层提权（自带 su），不依赖 root 管理器。请自行承担风险。</string>
+    <string name="action_run_alt_exploit">运行 eventpoll UAF (CVE-2026-43074)</string>
+    <string name="alt_exploit_ok">备用引擎报告成功</string>
+    <string name="alt_exploit_failed">备用引擎失败——设备可能暂不支持</string>
 </resources>

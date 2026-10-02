@@ -1,5 +1,5 @@
 package com.ghostlock.app.domain.usecase
-
+import com.ghostlock.app.domain.model.AltExploitEngine
 import com.ghostlock.app.domain.model.CpuPair
 import com.ghostlock.app.domain.repository.GhostlockRepository
 
@@ -32,6 +32,11 @@ class ExportOffsetsUseCase(private val repository: GhostlockRepository) {
 class RunExploitUseCase(private val repository: GhostlockRepository) {
     suspend operator fun invoke(pair: CpuPair, targetManager: String? = null, transfer: Boolean = false, onLog: (String) -> Unit) =
         repository.runExploit(pair, targetManager, transfer, onLog)
+}
+
+class RunAltExploitUseCase(private val repository: GhostlockRepository) {
+    suspend operator fun invoke(engine: AltExploitEngine, onLog: (String) -> Unit) =
+        repository.runAltExploit(engine, onLog)
 }
 
 class ReadDocumentUseCase(private val repository: GhostlockRepository) {

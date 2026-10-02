@@ -69,4 +69,9 @@
     <string name="root_transfer_pick">Transfer root to</string>
     <string name="root_transfer_ok">Root handed over</string>
     <string name="root_transfer_failed">Transfer failed — target manager not installed or not trusted by this kernel</string>
+    <string name="alt_exploit_title">Alternate exploit</string>
+    <string name="alt_exploit_summary">Kernel-level engines that get root directly (build your own su), independent of the root manager. Use at your own risk.</string>
+    <string name="action_run_alt_exploit">Run eventpoll UAF (CVE-2026-43074)</string>
+    <string name="alt_exploit_ok">Alternate engine reported success</string>
+    <string name="alt_exploit_failed">Alternate engine failed — device may not be supported yet</string>
 </resources>

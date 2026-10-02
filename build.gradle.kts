@@ -98,6 +98,29 @@ tasks.register<Copy>("prepareGhostlockJniLibs") {
     rename { "libghostlock.so" }
 }
 
+// Alternate engine: CVE-2026-43074 (eventpoll UAF).
+tasks.register<Exec>("buildGhostlock43074Native") {
+    description = "buildGhostlock43074Native"
+    workingDir(rootDir)
+    commandLine("make", "ghostlock_43074")
+    val ndk = resolveNdkDir()
+    environment("ANDROID_NDK_HOME", ndk)
+    environment("NDK_ROOT", ndk)
+    inputs.files(
+        fileTree("src/exploits/cve202643074") { include("**/*.c", "**/*.h", "**/*.S") },
+        file("Makefile"),
+    )
+    outputs.file(file("ghostlock_43074"))
+}
+
+tasks.register<Copy>("prepareGhostlock43074JniLibs") {
+    description = "prepareGhostlock43074JniLibs"
+    dependsOn("buildGhostlock43074Native")
+    from("ghostlock_43074")
+    into("app/src/main/jniLibs/arm64-v8a")
+    rename { "libghostlock43074.so" }
+}
+
 tasks.register<Exec>("buildGhostlockExtract") {
     description = "buildGhostlockExtract"
     val tools = extractNdkTools()

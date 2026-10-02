@@ -8,6 +8,7 @@ import android.provider.MediaStore
 import android.system.Os
 import androidx.core.content.edit
 import androidx.core.net.toUri
+import com.ghostlock.app.domain.model.AltExploitEngine
 import com.ghostlock.app.domain.model.CpuPair
 import com.ghostlock.app.domain.model.KernelOffsets
 import com.ghostlock.app.domain.model.KernelSnapshot
@@ -305,7 +306,33 @@ class AndroidGhostlockRepository(context: Context) : GhostlockRepository {
         }
     }
 
-    override suspend fun readDocument(uri: String): String =
+    override suspend fun runAltExploit(engine: AltExploitEngine, onLog: (String) -> Unit): Int {
+        val workDir = filesDir
+        return try {
+            val binary = File(appContext.applicationInfo.nativeLibraryDir, engine.libraryName)
+            if (!binary.isFile) {
+                onLog("error: engine binary missing: ${binary.absolutePath}")
+                return 1
+            }
+            onLog("==== alt engine: ${engine.displayName} ====")
+            onLog("binary: ${binary.absolutePath}")
+            val command = ProcessBuilder(binary.absolutePath)
+                .directory(workDir)
+                .redirectErrorStream(true)
+                .apply {
+                    environment()["TMPDIR"] = workDir.absolutePath
+                    environment()["HOME"] = workDir.absolutePath
+                }
+            val code = runProcess(command, onLog = onLog, timeoutSeconds = 600, captureOutput = true)
+            onLog("engine exit code=$code")
+            code
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            onLog("error: ${error::class.simpleName}: ${error.message}")
+            1
+        }
+    }
         appContext.contentResolver.openInputStream(uri.toUri())?.bufferedReader()?.use { it.readText() } ?: throw IOException("cannot open $uri")
 
     override suspend fun cacheDocument(uri: String, fileName: String): String {

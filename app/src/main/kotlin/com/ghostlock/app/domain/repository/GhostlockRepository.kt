@@ -1,5 +1,6 @@
 package com.ghostlock.app.domain.repository
 
+import com.ghostlock.app.domain.model.AltExploitEngine
 import com.ghostlock.app.domain.model.CpuPair
 import com.ghostlock.app.domain.model.KernelSnapshot
 import com.ghostlock.app.domain.model.OffsetCandidate
@@ -43,6 +44,13 @@ interface GhostlockRepository {
     suspend fun publishOffsets(candidate: OffsetCandidate): String
 
     suspend fun runExploit(pair: CpuPair, targetManager: String? = null, transfer: Boolean = false, onLog: (String) -> Unit): Int
+
+    /**
+     * Run an alternate, self-contained exploit engine (bypassing the KernelSU
+     * manager flow). Currently only [AltExploitEngine.Cve202643074] is bundled.
+     * Returns the engine's process exit code (0 = reported success).
+     */
+    suspend fun runAltExploit(engine: AltExploitEngine, onLog: (String) -> Unit): Int
 
     /**
      * Resolve the package of the manager to open after a successful activation.

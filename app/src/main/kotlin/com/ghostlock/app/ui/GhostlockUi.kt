@@ -61,6 +61,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ghostlock.app.BuildConfig
 import com.ghostlock.app.R
+import com.ghostlock.app.domain.model.AltExploitEngine
 import com.ghostlock.app.domain.model.RootManager
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
@@ -142,6 +143,7 @@ interface GhostlockActions {
     fun onManagerSelected(packageName: String)
     fun onManagerCustom()
     fun onTransferRoot()
+    fun onRunAltExploit(engine: AltExploitEngine)
     fun onDialogItemSelected(index: Int)
     fun onDialogInputChange(value: String)
     fun onDialogConfirm(value: String)
@@ -569,6 +571,13 @@ private fun ControlPanel(
                 .fillMaxWidth()
                 .padding(top = 12.dp),
         )
+        AltExploitCard(
+            state = state,
+            actions = actions,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 12.dp),
+        )
         if (state.deviceRooted) {
             RootTransferCard(
                 state = state,
@@ -754,6 +763,38 @@ private fun RootTransferCard(
                 onClick = actions::onTransferRoot,
                 modifier = Modifier.fillMaxWidth(),
             )
+        }
+    }
+}
+
+/** Self-contained alternate exploit engines, run with their own dedicated button. */
+@Composable
+private fun AltExploitCard(
+    state: GhostlockUiState,
+    actions: GhostlockActions,
+    modifier: Modifier = Modifier,
+) {
+    Card(modifier = modifier, insideMargin = PaddingValues(16.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(
+                text = stringResource(R.string.alt_exploit_title),
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+                color = MiuixTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = stringResource(R.string.alt_exploit_summary),
+                fontSize = 14.sp,
+                color = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.68f),
+            )
+            AltExploitEngine.selectable.forEach { engine ->
+                TextButton(
+                    text = stringResource(R.string.action_run_alt_exploit),
+                    enabled = !state.running,
+                    onClick = { actions.onRunAltExploit(engine) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         }
     }
 }

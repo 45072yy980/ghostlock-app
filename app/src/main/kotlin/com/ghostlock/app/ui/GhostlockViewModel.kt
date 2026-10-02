@@ -3,6 +3,7 @@ package com.ghostlock.app.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ghostlock.app.R
+import com.ghostlock.app.domain.model.AltExploitEngine
 import com.ghostlock.app.domain.model.KernelSnapshot
 import com.ghostlock.app.domain.model.LogTone
 import com.ghostlock.app.domain.model.OffsetCandidate
@@ -17,6 +18,7 @@ import com.ghostlock.app.domain.usecase.LoadKernelSnapshotUseCase
 import com.ghostlock.app.domain.usecase.ParseSourceUseCase
 import com.ghostlock.app.domain.usecase.PublishOffsetsUseCase
 import com.ghostlock.app.domain.usecase.ReadDocumentUseCase
+import com.ghostlock.app.domain.usecase.RunAltExploitUseCase
 import com.ghostlock.app.domain.usecase.RunExploitUseCase
 import com.ghostlock.app.domain.usecase.SelectCpuPairUseCase
 import kotlinx.coroutines.CancellationException
@@ -55,6 +57,7 @@ class GhostlockViewModel(
     private val publishOffsetsUseCase = PublishOffsetsUseCase(repository)
     private val readDocumentUseCase = ReadDocumentUseCase(repository)
     private val runExploitUseCase = RunExploitUseCase(repository)
+    private val runAltExploitUseCase = RunAltExploitUseCase(repository)
     private val formatLog = FormatLogUseCase()
 
     val state = mutableState.asStateFlow()
@@ -325,6 +328,30 @@ class GhostlockViewModel(
         selectManagerByPackage(packageName)
         val snapshot = kernelSnapshot ?: return
         startExploit(snapshot, targetManager = packageName, transfer = true)
+    }
+
+    /** Run a self-contained alternate exploit engine (independent of the manager flow). */
+    fun onRunAltExploit(engine: AltExploitEngine) {
+        if (!beginOperation()) return
+        send(GhostlockEffect.KeepScreenAwake(true))
+        appendLog("==== alternate exploit ====")
+        appendLog("engine: ${engine.displayName}")
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val code = runAltExploitUseCase(engine, ::appendLog)
+                if (code == 0) {
+                    appendLog("result: ${engine.displayName} reported success")
+                    send(GhostlockEffect.Toast(R.string.alt_exploit_ok))
+                } else {
+                    appendLog("result: ${engine.displayName} failed (exit code=$code)")
+                    send(GhostlockEffect.Toast(R.string.alt_exploit_failed))
+                }
+                refreshSnapshot()
+            } finally {
+                endOperation()
+                send(GhostlockEffect.KeepScreenAwake(false))
+            }
+        }
     }
 
     fun onDialogInputChange(value: String) = mutableState.update { it.copy(dialogInput = value) }

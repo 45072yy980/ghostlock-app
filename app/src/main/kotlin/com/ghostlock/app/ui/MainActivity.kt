@@ -21,6 +21,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.ghostlock.app.GhostlockApplication
 import com.ghostlock.app.R
+import com.ghostlock.app.domain.model.AltExploitEngine
 
 class MainActivity : ComponentActivity() {
     private val viewModel by viewModels<GhostlockViewModel> {
@@ -135,6 +136,7 @@ private fun GhostlockRoute(
             override fun onManagerSelected(packageName: String) = viewModel.selectManagerByPackage(packageName)
             override fun onManagerCustom() = viewModel.promptCustomManager()
             override fun onTransferRoot() = viewModel.onTransferRoot()
+            override fun onRunAltExploit(engine: AltExploitEngine) = viewModel.onRunAltExploit(engine)
             override fun onDialogItemSelected(index: Int) = viewModel.onDialogItemSelected(index)
             override fun onDialogInputChange(value: String) = viewModel.onDialogInputChange(value)
             override fun onDialogConfirm(value: String) = viewModel.onDialogConfirm(value)
