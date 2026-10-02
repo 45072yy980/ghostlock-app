@@ -333,6 +333,8 @@ class AndroidGhostlockRepository(context: Context) : GhostlockRepository {
             1
         }
     }
+
+    override suspend fun readDocument(uri: String): String =
         appContext.contentResolver.openInputStream(uri.toUri())?.bufferedReader()?.use { it.readText() } ?: throw IOException("cannot open $uri")
 
     override suspend fun cacheDocument(uri: String, fileName: String): String {
